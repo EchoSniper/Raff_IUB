@@ -1,33 +1,30 @@
-// Define the analog pin where the LM47 (or similar sensor) is connected
-const int sensorPin = A1;  // A1 is the analog input pin
-
-// Function to read the temperature from the sensor
-float readTemperature() {
-  // Read the raw analog value (0-1023 for 10-bit ADC)
-  int rawValue = analogRead(sensorPin);
-  
-  // Convert the raw value to voltage (0-1023 corresponds to 0-5V for Arduino)
-  float voltage = rawValue * (5.0 / 1023.0);
-  
-  // LM47 gives 500mV per degree Celsius, with a 500mV offset at 0°C.
-  // So, the formula to calculate temperature is:
-  float temperature = (voltage - 0.5) * 100;
-  
-  return temperature;
-}
+// Pin assignments for LM35 sensors
+const int lm35Pin1 = A0; // First LM35 connected to analog pin A0
+const int lm35Pin2 = A1; // Second LM35 connected to analog pin A1
 
 void setup() {
-  // Start serial communication for output
-  Serial.begin(9600);
+  Serial.begin(9600); // Initialize the Serial communication at 9600 baud
+  Serial.println("Timestamp,Temperature1,Temperature2"); // CSV headers for data logging
 }
 
 void loop() {
-  // Read and print the temperature
-  float temperature = readTemperature();
-  Serial.print("Temperature: ");
-  Serial.print(temperature);
-  Serial.println(" °C");
+  // Read raw analog values from the sensors
+  int rawValue1 = analogRead(lm35Pin1);
+  int rawValue2 = analogRead(lm35Pin2);
   
-  // Wait for 1 second before reading again
-  delay(1000);
+  // Convert analog readings to temperature in Celsius
+  float temperature1 = (rawValue1 * 5.0 / 1024.0) * 100.0; // LM35 gives 10mV per degree Celsius
+  float temperature2 = (rawValue2 * 5.0 / 1024.0) * 100.0;
+
+  // Get current timestamp in milliseconds
+  unsigned long timestamp = millis();
+
+  // Send data in CSV format: Timestamp,Temperature1,Temperature2
+  Serial.print(timestamp);
+  Serial.print(",");
+  Serial.print(temperature1);
+  Serial.print(",");
+  Serial.println(temperature2);
+
+  delay(1000); // Wait for 1 second before the next reading
 }
