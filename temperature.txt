@@ -1,0 +1,33 @@
+// Define the analog pin where the LM47 (or similar sensor) is connected
+const int sensorPin = A1;  // A1 is the analog input pin
+
+// Function to read the temperature from the sensor
+float readTemperature() {
+  // Read the raw analog value (0-1023 for 10-bit ADC)
+  int rawValue = analogRead(sensorPin);
+  
+  // Convert the raw value to voltage (0-1023 corresponds to 0-5V for Arduino)
+  float voltage = rawValue * (5.0 / 1023.0);
+  
+  // LM47 gives 500mV per degree Celsius, with a 500mV offset at 0°C.
+  // So, the formula to calculate temperature is:
+  float temperature = (voltage - 0.5) * 100;
+  
+  return temperature;
+}
+
+void setup() {
+  // Start serial communication for output
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Read and print the temperature
+  float temperature = readTemperature();
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+  
+  // Wait for 1 second before reading again
+  delay(1000);
+}
