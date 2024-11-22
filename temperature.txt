@@ -1,30 +1,27 @@
-// Pin assignments for LM35 sensors
-const int lm35Pin1 = A0; // First LM35 connected to analog pin A0
-const int lm35Pin2 = A1; // Second LM35 connected to analog pin A1
-
-void setup() {
-  Serial.begin(9600); // Initialize the Serial communication at 9600 baud
-  Serial.println("Timestamp,Temperature1,Temperature2"); // CSV headers for data logging
+  //Constant Assigning 
+const int lm35_pin = A1;      // Code for First Sensor 
+const int lm35_pin1 = A1; 
+void setup(){
+	Serial.begin(9600);
 }
 
-void loop() {
-  // Read raw analog values from the sensors
-  int rawValue1 = analogRead(lm35Pin1);
-  int rawValue2 = analogRead(lm35Pin2);
+void loop(){
+  //Variables Assigning and Setting Type of Data 
+  int temp_adc_val;
+  float temp_val;
+  int temp_adc_val1;
+  float temp_val1;
+  //Assigning Variable 1 
+  temp_adc_val = analogRead(lm35_pin);  /* Read Temperature */
+  temp_val = (temp_adc_val * 4.88);      /* Convert adc value to equivalent voltage */
+  temp_val = (temp_val/10);  /* LM35 gives output of 10mv/°C */
   
-  // Convert analog readings to temperature in Celsius
-  float temperature1 = (rawValue1 * 5.0 / 1024.0) * 100.0; // LM35 gives 10mV per degree Celsius
-  float temperature2 = (rawValue2 * 5.0 / 1024.0) * 100.0;
-
-  // Get current timestamp in milliseconds
-  unsigned long timestamp = millis();
-
-  // Send data in CSV format: Timestamp,Temperature1,Temperature2
-  Serial.print(timestamp);
-  Serial.print(",");
-  Serial.print(temperature1);
-  Serial.print(",");
-  Serial.println(temperature2);
-
-  delay(1000); // Wait for 1 second before the next reading
+  //Assigning Variable 2 
+  temp_adc_val1 = analogRead(lm35_pin1);  /* Read Temperature */
+  temp_val1 = (temp_adc_val1 * 4.88);      /* Convert adc value to equivalent voltage */
+  temp_val1 = (temp_val1/10);  /* LM35 gives output of 10mv/°C */
+  
+  // Printing Varialbes 
+  Serial.print(temp_val,temp_val1);
+  delay(1000);
 }
