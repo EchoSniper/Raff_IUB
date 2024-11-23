@@ -1,3 +1,5 @@
+#This code is CHATGPT Oritentated, modification isn't brought yet. 
+#This code will be used for Data Acquisition  into a CSV File for further analysis 
 import serial
 import csv
 import time
