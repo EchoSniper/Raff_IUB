@@ -1,36 +1,43 @@
-#include <Filters.h> //Easy library to do the calculations
-float testFrequency = 50; // test signal frequency (Hz)
-float windowLength = 40.0/testFrequency; // how long to average the signal, for statistist
-int Sensor = 0; //Sensor analog input, here it's A0
-float intercept = -0.04; // to be adjusted based on calibration testing
-float slope = 0.0405; // to be adjusted based on calibration testing
+#include <Filters.h> // Easy library to do the calculations
+
+// Settings For the ZMPT101B
+float testFrequency = 50; // Test signal frequency (Hz)
+float windowLength = 40.0 / testFrequency; // How long to average the signal for statistics
+int Sensor = 0; // Sensor analog input, here it's A0
+float intercept = -0.04; // To be adjusted based on calibration testing
+float slope = 0.0405; // To be adjusted based on calibration testing
 float current_Volts; // Voltage
-unsigned long printPeriod = 1000; //Refresh rate
-unsigned long previousMillis = 0;
+unsigned long printPeriod = 5000; // Refresh rate
+unsigned long previousMillis = 0; // Previous time for printing
 
 void setup() {
-Serial.begin(9600); // start the serial port
-delay(3000);
-
+  Serial.begin(9600); // Start the serial port
 }
 
 void loop() {
+  RunningStatistics inputStats; // Easy life lines for RMS calculation
+  inputStats.setWindowSecs(windowLength); // Set the window for RMS calculation
 
-RunningStatistics inputStats; //Easy life lines, actual calculation of the RMS requires a load of coding
-inputStats.setWindowSecs( windowLength );
+  while (true) {
+    Sensor = analogRead(A1); // Read the analog input value
+    inputStats.input(Sensor); // Log to Stats function
 
-while( true ) {
-Sensor = analogRead(A1); // read the analog in value:
-inputStats.input(Sensor); // log to Stats function
+    if ((unsigned long)(millis() - previousMillis) >= printPeriod) {
+      previousMillis = millis(); // Update time every 5 seconds
 
-if((unsigned long)(millis() - previousMillis) >= printPeriod) {
-previousMillis = millis(); // update time every second
+      // Calculate the voltage
+      current_Volts = intercept + slope * inputStats.sigma(); // Calibration for offset and amplitude
+      current_Volts = current_Volts * (40.3231) - 245; // Further calibrations for the amplitude
 
-Serial.print( "\n" );
+      Serial.print("\n");
 
-current_Volts = intercept + slope * inputStats.sigma(); //Calibartions for offset and amplitude
-current_Volts= current_Volts*(40.3231) -240; //Further calibrations for the amplitude
-
-Serial.print( "\tVoltage: " );
-Serial.print( current_Volts ); //Calculation and Value display is done the rest is if you're using an OLED display
-}}}
+      // Check if voltage is below a certain threshold, if so print 0
+      if (current_Volts < 0.1) {  // You can change this threshold value as needed
+        Serial.print("\tVoltage: 0");
+      } else {
+        Serial.print("\tVoltage: ");
+        Serial.print(current_Volts); // Print actual voltage if above threshold
+      }
+    }
+  }
+}
