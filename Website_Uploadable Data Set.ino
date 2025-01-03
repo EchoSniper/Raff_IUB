@@ -9,12 +9,12 @@ float currentIntercepts[] = {0.0, 0.0, 0.0, 0.0};  // Calibration intercepts for
 float currentSlopes[] = {0.1, 0.1, 0.1, 0.1};      // Calibration slopes for currents
 
 // Analog Pins
-int currentPins[] = {A0, A1, A2, A3}; // Current for A, B, C, Ground
-int voltagePins[] = {A4, A5, A6};    // Voltages for A, B, C
+int currentPins[] = {A0, A1, A2, A3}; // Currents: Ground, PhC, PhB, PhA
+int voltagePins[] = {A4, A5, A6};    // Voltages: PhA, PhB, PhC
 
 // Calculated values
-float phaseCurrents[4]; // Phase currents: A, B, C, Ground
-float phaseVoltages[3]; // Phase voltages: A, B, C
+float phaseCurrents[4]; // Phase currents: Ground, PhC, PhB, PhA
+float phaseVoltages[3]; // Phase voltages: PhA, PhB, PhC
 
 unsigned long printPeriod = 1000; // Print every second
 unsigned long previousMillis = 0;
@@ -52,14 +52,14 @@ void loop() {
   if ((unsigned long)(millis() - previousMillis) >= printPeriod) {
     previousMillis = millis();
 
-    // Format: Current_C, Current_B, Current_A, Voltage_C, Voltage_B, Voltage_A
-    Serial.print(phaseCurrents[3], 2); Serial.print(",");
-    Serial.print(phaseCurrents[2], 2); Serial.print(",");
-    Serial.print(phaseCurrents[1], 2); Serial.print(",");
-    Serial.print(phaseCurrents[0], 2); Serial.print(",");
-    Serial.print(phaseVoltages[2], 2); Serial.print(",");
-    Serial.print(phaseVoltages[1], 2); Serial.print(",");
-    Serial.println(phaseVoltages[0], 2); // Print last value and move to new line
+    // Format: Current_G, Current_C, Current_B, Current_A, Voltage_A, Voltage_B, Voltage_C
+    Serial.print(phaseCurrents[0], 2); Serial.print(","); // Ground current
+    Serial.print(phaseCurrents[1], 2); Serial.print(","); // PhC current
+    Serial.print(phaseCurrents[2], 2); Serial.print(","); // PhB current
+    Serial.print(phaseCurrents[3], 2); Serial.print(","); // PhA current
+    Serial.print(phaseVoltages[0], 2); Serial.print(","); // PhA voltage
+    Serial.print(phaseVoltages[1], 2); Serial.print(","); // PhB voltage
+    Serial.println(phaseVoltages[2], 2); // PhC voltage
   }
   delay(10); // Small delay for stability
 }
