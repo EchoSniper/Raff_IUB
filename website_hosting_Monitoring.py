@@ -1,65 +1,98 @@
-#include <Filters.h> // Library for RMS calculation
+import serial
+import socket
+import threading
+import json
+import time
 
-// Settings for ZMPT101B Voltage Sensors
-float testFrequency = 50; // Frequency (50Hz or 60Hz)
-float windowLength = 40.0 / testFrequency; // RMS window length
-float voltageIntercepts[] = {-0.04, -0.04, -0.04}; // Calibration intercepts for voltages
-float voltageSlopes[] = {0.0405, 0.0405, 0.0405};  // Calibration slopes for voltages
-float currentIntercepts[] = {0.0, 0.0, 0.0, 0.0};  // Calibration intercepts for currents
-float currentSlopes[] = {0.1, 0.1, 0.1, 0.1};      // Calibration slopes for currents
-
-// Analog Pins
-int currentPins[] = {A0, A1, A2, A3}; // Currents: Ground, PhC, PhB, PhA
-int voltagePins[] = {A4, A5, A6};    // Voltages: PhA, PhB, PhC
-
-// Calculated values
-float phaseCurrents[4]; // Phase currents: Ground, PhC, PhB, PhA
-float phaseVoltages[3]; // Phase voltages: PhA, PhB, PhC
-
-unsigned long printPeriod = 1000; // Print every second
-unsigned long previousMillis = 0;
-
-RunningStatistics voltageStats[3]; // RMS stats for voltages
-RunningStatistics currentStats[4]; // RMS stats for currents
-
-void setup() {
-  Serial.begin(9600);
-  for (int i = 0; i < 3; i++) {
-    voltageStats[i].setWindowSecs(windowLength); // RMS window for voltages
-  }
-  for (int i = 0; i < 4; i++) {
-    currentStats[i].setWindowSecs(windowLength); // RMS window for currents
-  }
+# Serial communication setup
+arduino_port = '/dev/ttyUSB0'  # Replace with your port
+baud_rate = 9600
+sensor_data = {
+    "Phase_A_Voltage": 0.0,
+    "Phase_A_Current": 0.0,
+    "Phase_B_Voltage": 0.0,
+    "Phase_B_Current": 0.0,
+    "Phase_C_Voltage": 0.0,
+    "Phase_C_Current": 0.0,
+    "Ground_Current": 0.0  # Added Ground Current for future use
 }
 
-void loop() {
-  // Read currents
-  for (int i = 0; i < 4; i++) {
-    int rawCurrent = analogRead(currentPins[i]);
-    currentStats[i].input(rawCurrent); // Log current values
-    phaseCurrents[i] = currentIntercepts[i] + currentSlopes[i] * currentStats[i].sigma();
-  }
+# HTML content remains the same...
 
-  // Read voltages
-  for (int i = 0; i < 3; i++) {
-    int rawVoltage = analogRead(voltagePins[i]);
-    voltageStats[i].input(rawVoltage); // Log voltage values
-    phaseVoltages[i] = voltageIntercepts[i] + voltageSlopes[i] * voltageStats[i].sigma();
-    phaseVoltages[i] = phaseVoltages[i] * (40.3231); // Further calibration
-  }
+# Web server configuration
+ip_address = "192.168.68.110"  # Listen on all interfaces
+port = 2010
 
-  // Print results in a comma-separated format
-  if ((unsigned long)(millis() - previousMillis) >= printPeriod) {
-    previousMillis = millis();
+def read_serial_data():
+    """Continuously read data from the Arduino and update the global sensor_data dictionary."""
+    global sensor_data
+    try:
+        ser = serial.Serial(arduino_port, baud_rate, timeout=1)
+        print("Connected to Arduino...")
+        while True:
+            line = ser.readline().decode('utf-8').strip()
+            if line:
+                print(f"Received data: {line}")  # For debugging, to see what data is coming in
+                
+                # Skip lines containing 'Time' or any other non-numeric data
+                if 'Time' in line or not line.replace('.', '', 1).isdigit() and not ',' in line:
+                    print(f"Skipping invalid line: {line}")
+                    continue  # Skip non-numeric lines
+                
+                try:
+                    # Attempt to convert the line to float values
+                    values = list(map(float, line.split(",")))
+                    
+                    if len(values) >= 7:  # Expecting 7 values now (Ground Current, Phase C, B, A currents, and Phase C, B, A voltages)
+                        sensor_data["Ground_Current"] = values[0]  # Ground Current
+                        sensor_data["Phase_C_Current"] = values[1]
+                        sensor_data["Phase_B_Current"] = values[2]
+                        sensor_data["Phase_A_Current"] = values[3]
+                        sensor_data["Phase_C_Voltage"] = values[4]
+                        sensor_data["Phase_B_Voltage"] = values[5]
+                        sensor_data["Phase_A_Voltage"] = values[6]
+                    else:
+                        print(f"Invalid data format: {line}")
+                except ValueError as e:
+                    print(f"Error processing data: {e} for line: {line}")
+    except Exception as e:
+        print(f"Failed to connect to Arduino: {e}")
 
-    // Format: Ground_Current, Current_C, Current_B, Current_A, Voltage_A, Voltage_B, Voltage_C
-    Serial.print(phaseCurrents[0], 2); Serial.print(","); // Ground current
-    Serial.print(phaseCurrents[1], 2); Serial.print(","); // PhC current
-    Serial.print(phaseCurrents[2], 2); Serial.print(","); // PhB current
-    Serial.print(phaseCurrents[3], 2); Serial.print(","); // PhA current
-    Serial.print(phaseVoltages[0], 2); Serial.print(","); // PhA voltage
-    Serial.print(phaseVoltages[1], 2); Serial.print(","); // PhB voltage
-    Serial.println(phaseVoltages[2], 2); // PhC voltage
-  }
-  delay(10); // Small delay for stability
-}
+def handle_client(client_socket):
+    """Handles the HTTP requests from clients."""
+    request = client_socket.recv(1024).decode("utf-8")
+    if request.startswith('GET /data'):
+        # Return the first 6 values (Phase A, B, C voltages and currents)
+        response = json.dumps({
+            "Phase_A_Voltage": sensor_data["Phase_A_Voltage"],
+            "Phase_A_Current": sensor_data["Phase_A_Current"],
+            "Phase_B_Voltage": sensor_data["Phase_B_Voltage"],
+            "Phase_B_Current": sensor_data["Phase_B_Current"],
+            "Phase_C_Voltage": sensor_data["Phase_C_Voltage"],
+            "Phase_C_Current": sensor_data["Phase_C_Current"]
+        })
+        client_socket.sendall(
+            f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{response}".encode('utf-8')
+        )
+    else:
+        client_socket.sendall(
+            f"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{html_content}".encode('utf-8')
+        )
+    client_socket.close()
+
+def start_web_server():
+    """Starts the web server."""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((ip_address, port))
+    server.listen(5)
+    print(f"Server running on {ip_address}:{port}...")
+    while True:
+        client_socket, addr = server.accept()
+        print(f"Accepted connection from {addr}")
+        threading.Thread(target=handle_client, args=(client_socket,)).start()
+
+if __name__ == "__main__":
+    # Start serial data reading in a separate thread
+    threading.Thread(target=read_serial_data, daemon=True).start()
+    # Start the web server
+    start_web_server()
